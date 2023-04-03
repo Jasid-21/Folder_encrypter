@@ -8,22 +8,20 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as Pbk
 
 ### Variables.
 end_code = False
-password = "password"
-
-basePath = os.path.dirname(os.path.abspath(__file__))
-dataPath = os.path.join(basePath, "tests")
-
-copyPath = os.path.join(basePath, "copy")
-
-salt = b'\xf3\x91J\x04{\x1b\xea\\2>|\x08\xfbq\x15\xea'
-pbk = Pbk(hashes.SHA256(), 32, salt, 480000)
-
-key = pbk.derive(bytes(password, 'UTF-8'))
-key64 = base64.urlsafe_b64encode(key)
-
 
 
 ### Functions and Classes.
+def getKey64():
+    password = input("Type password: ")
+
+    salt = b'\xf3\x91J\x04{\x1b\xea\\2>|\x08\xfbq\x15\xea'
+    pbk = Pbk(hashes.SHA256(), 32, salt, 480000)
+
+    key = pbk.derive(bytes(password, 'UTF-8'))
+    key64 = base64.urlsafe_b64encode(key)
+
+    return key64
+
 def getFromFile(path):
     file = open(path, "rb")
     fileCont = file.read()
@@ -39,15 +37,20 @@ def encrypt(file, key):
     return Fernet(key).encrypt(file)
 
 def decrypt(file, key):
-    return Fernet(key).decrypt(file)
+    try:
+        dec = Fernet(key).decrypt(file)
+        return [True, dec]
+    except:
+        print("Something went wrong. Be sure the password is correct...")
+        return [False]
 
-def encryptAll(path, cm):
+def encryptAll(path, cm, key64):
     files = os.listdir(path)
 
     for f in files:
         f = os.path.join(path, f)
         if os.path.isdir(f):
-            encryptAll(f, cm)
+            encryptAll(f, cm, key64)
         else:
             fileCont = getFromFile(f)
             if cm == "enc":
@@ -55,7 +58,10 @@ def encryptAll(path, cm):
                 writeFile(f, enc)
             if cm == "dec":
                 dec = decrypt(fileCont, key64)
-                writeFile(f, dec)
+                if dec[0] == True:
+                    writeFile(f, dec[1])
+                else:
+                    break
 
         
 
@@ -67,23 +73,25 @@ def execute_command(cm):
         
         if not os.path.exists(path):
             print("Type a valid path...")
-            ex = input("Retry? [y/n] ")
+            ex = input("Retry? [y/n]: ")
             if ex != "y" and ex != "Y":
                 print("Leaving program...")
                 return
         else:
             if os.path.isdir(path):
-                conf = input("The given path points to a directory. Do you want to continue? [y/n]")
-                if conf == "y" or "Y":
-                    encryptAll(path, cm)
+                conf = input("The given path points to a directory. Do you want to continue? [y/n]: ")
+                if conf == "y" or conf == "Y":
+                    key64 = getKey64()
+                    encryptAll(path, cm, key64)
             else:
                 file = getFromFile(path)
+                key64 = getKey64()
                 enc = encrypt(file.read(), key64)
                 file.write(enc)
                 file.close()
             
-            other = input("Do you want to encrypt other path? [y/n]: ")
-            if other != "y" or other != "Y":
+            other = input("Do you want to encrypt/decrypt other path? [y/n]: ")
+            if other != "y" and other != "Y":
                 print("Leaving functionality...")
                 break
         
