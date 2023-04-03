@@ -86,7 +86,17 @@ def execute_command(cm):
             else:
                 file = getFromFile(path)
                 key64 = getKey64()
-                enc = encrypt(file.read(), key64)
+
+                enc = ""
+                if cm == "enc":
+                    enc = encrypt(file, key64)
+                if cm == "dec":
+                    enc = decrypt(file, key64)
+                    if enc[0]:
+                        enc = enc[1]
+                    else:
+                        break
+                file = open(path, 'wb')
                 file.write(enc)
                 file.close()
             
